@@ -75,117 +75,88 @@ String choice;
   } 
 
 
-  //Preemptive Priority
-    static void PreemptivePriorityScheduling()
-	{
-    Scanner sc = new Scanner(System.in);
-		int TotalBurstTime = 0;
-		ArrayList<Process> Processes = new ArrayList<>();
-		
+	// Preemptive Priority Scheduling
+	static void PreemptivePriorityScheduling() {
+		Scanner sc = new Scanner(System.in);
+		int totalBurstTime = 0;
+		ArrayList<Process> processes = new ArrayList<>();
+
 		System.out.println("Enter the number of processes: ");
-		int ProcessCount = sc.nextInt();
-		
-		for(int i = 1; i <= ProcessCount;i++)
-		{
-			Process Process = new Process();
-			int AT, BT, P;
-			
+		int processCount = sc.nextInt();
+
+		for (int i = 1; i <= processCount; i++) {
 			System.out.println("Process Number " + i);
 			System.out.println("Enter Arrival Time: ");
-			Process.setArrivalTime(AT = sc.nextInt());
+			int arrivalTime = sc.nextInt();
 			System.out.println("Enter Burst Time: ");
-			Process.setBurstTime(BT = sc.nextInt());
-			Process.setMaxBurstTime(BT);
+			int burstTime = sc.nextInt();
 			System.out.println("Enter Priority: ");
-			Process.setPriority(P = sc.nextInt());
-			
-			TotalBurstTime += BT;
-			Processes.add(Process);
+			int priority = sc.nextInt();
+
+			totalBurstTime += burstTime;
+			processes.add(new Process(arrivalTime, burstTime, priority));
 		}
-		
+
 		System.out.println("Gantt Chart");
-		GanttChart Gchart = new GanttChart();
-		for(int CurrentTime = 0; CurrentTime <= TotalBurstTime; CurrentTime++)
-		{
-			if(CurrentTime == TotalBurstTime)
-			{
-				Gchart.Finalize(CurrentTime);
-				break;
-			}
-			
-			ArrayList<Integer> Queue = new ArrayList<>();
-			Integer HighestPriority = null;
-			Integer HighestPriorityNum = null;
-			for(int ProcessNo = 0; ProcessNo < Processes.size(); ProcessNo++)
-			{
-				if(Processes.get(ProcessNo).getBurstTime() == 0)
-				{
-					continue;
-				}
-				if(Processes.get(ProcessNo).getArrivalTime() <= CurrentTime)
-				{
-					Queue.add(ProcessNo);
+		GanttChart ganttChart = new GanttChart();
+		int currentTime = 0;
+		int completedProcesses = 0;
+
+		while (completedProcesses < processCount) {
+			int highestPriority = Integer.MAX_VALUE;
+			int highestPriorityProcess = -1;
+
+			for (int i = 0; i < processCount; i++) {
+				Process process = processes.get(i);
+
+				if (process.getBurstTime() > 0 && process.getArrivalTime() <= currentTime && process.getPriority() < highestPriority) {
+					highestPriority = process.getPriority();
+					highestPriorityProcess = i;
 				}
 			}
-			if(Queue.size() == 0)
-			{
-				TotalBurstTime++;
+
+			if (highestPriorityProcess == -1) {
+				currentTime++;
 				continue;
 			}
-			
-			for(int i = 0; i < Queue.size(); i++)
-			{	
-				if(i == 0)
-				{
-					HighestPriority = Queue.get(0);
-					HighestPriorityNum = Processes.get(Queue.get(0)).getPriority();
-				}
-				else
-				{
-					if(Processes.get(Queue.get(i)).getPriority() < HighestPriorityNum)
-					{
-						HighestPriority = Queue.get(i);
-						HighestPriorityNum = Processes.get(Queue.get(i)).getPriority();
-					}
-				}
+
+			Process executingProcess = processes.get(highestPriorityProcess);
+			executingProcess.setBurstTime(executingProcess.getBurstTime() - 1);
+			currentTime++;
+
+			if (executingProcess.getBurstTime() == 0) {
+				executingProcess.setTurnAroundTime(currentTime - executingProcess.getArrivalTime());
+				executingProcess.setWaitingTime(executingProcess.getTurnAroundTime() - executingProcess.getMaxBurstTime());
+				completedProcesses++;
 			}
-			
-			if(Processes.get(HighestPriority).getBurstTime() == 1)
-			{
-				int CT, AT, TAT, BT;
-				CT = CurrentTime + 1;
-				AT = Processes.get(HighestPriority).getArrivalTime();
-				TAT = CT - AT;
-				BT = Processes.get(HighestPriority).getMaxBurstTime();
-				Processes.get(HighestPriority).setTurnAroundTime(TAT);
-				Processes.get(HighestPriority).setWaitingTime(TAT-BT);
-			}
-			
-			int ProcessBurstCount = Processes.get(HighestPriority).getBurstTime() - 1;
-			Processes.get(HighestPriority).setBurstTime(ProcessBurstCount);
-			Gchart.Add(CurrentTime, HighestPriority+1);
+
+			ganttChart.Add(currentTime, highestPriorityProcess + 1);
 		}
-		System.out.println(Gchart.GanttChartCreate());
-		System.out.println("");
-		
-		float ATAT = 0, AWT = 0;
-		for(int i = 0; i < Processes.size();i++)
-		{
-			ATAT += Processes.get(i).getTurnAroundTime();
-			AWT += Processes.get(i).getWaitingTime();
-			if(i == Processes.size() - 1)
-			{
-				ATAT = ATAT/Processes.size();
-				AWT = AWT/Processes.size();
-			}
+
+		System.out.println(ganttChart.GanttChartCreate());
+		System.out.println();
+
+		float averageTurnaroundTime = 0;
+		float averageWaitingTime = 0;
+
+		for (Process process : processes) {
+			averageTurnaroundTime += process.getTurnAroundTime();
+			averageWaitingTime += process.getWaitingTime();
 		}
-		System.out.println("ProcessNumber \t Arrival Time \t Burst Time \t Priority");
-		for(int i = 0; i < Processes.size(); i++)
-		{
-			System.out.println("Process " + (i+1) + " \t " + Processes.get(i).getArrivalTime() + " \t\t " + Processes.get(i).getMaxBurstTime() + " \t\t " + Processes.get(i).getPriority());
+
+		averageTurnaroundTime /= processCount;
+		averageWaitingTime /= processCount;
+
+		System.out.println("Process\tArrival Time\tBurst Time\tPriority");
+		for (Process process : processes) {
+			System.out.println("Process " + (processes.indexOf(process) + 1) + "\t" +
+							process.getArrivalTime() + "\t\t" +
+							process.getMaxBurstTime() + "\t\t" +
+							process.getPriority());
 		}
-		System.out.println("Average Turnaround Time: " + ATAT);
-		System.out.println("Average Waiting Time: " + AWT);
+
+		System.out.println("Average Turnaround Time: " + averageTurnaroundTime);
+		System.out.println("Average Waiting Time: " + averageWaitingTime);
 	}
 
 
